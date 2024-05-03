@@ -1,0 +1,54 @@
+pipeline {
+    agent any
+    environment {
+        SONAR = 'SonarQube'
+        ARTIFACTORY_SERVER_ID = 'Artifactory'
+        IMAGE_NAME = 'dpcode72/java'
+        IMAGE_TAG = '2.0'
+        CONTAINER_NAME = 'webapp'
+        DEFAULT_PORT= '8080'
+    }
+    tools {
+        git 'Default'
+        maven 'mvn'
+    }
+    stages {
+        stage('Checkout-Scm') {
+            steps {
+                git branch: 'developer-2', credentialsId: 'Access-Nagarro-Gitlab', url: 'https://git.nagarro.com/GITG00641/DotNet/deepak-kumar.git'
+            }
+        }
+        stage('Build-Docker') {
+            steps {
+                withCredentials([usernamePassword(credentialsId: 'Artifactory-Auth', usernameVariable: 'ARTIFACTORY_USERNAME', passwordVariable: 'ARTIFACTORY_PASSWORD')]) {
+                    sh "docker build --build-arg ARTIFACTORY_USERNAME=${ARTIFACTORY_USERNAME} --build-arg ARTIFACTORY_PASSWORD=${ARTIFACTORY_PASSWORD} -t ${IMAGE_NAME}:${IMAGE_TAG} ."
+                }
+            }
+        }
+        stage('Container-Check') {
+            steps {
+                script {
+                    def isRunning = sh(script: "docker ps --filter 'name=${env.CONTAINER_NAME}' --format '{{.Names}}'", returnStdout: true).trim()
+                    if (isRunning == env.CONTAINER_NAME) {
+                        def port = sh(script: "docker port ${env.CONTAINER_NAME} ${env.DEFAULT_PORT}", returnStdout: true).trim()
+                        try {
+                            sh "docker stop ${env.CONTAINER_NAME}"
+                            sh "docker rm ${env.CONTAINER_NAME}"
+                        } catch (Exception e) {
+                            echo "Failed to stop and remove container '${env.CONTAINER_NAME}': ${e.getMessage()}"
+                        }
+                    } else {
+                        echo "Container '${env.CONTAINER_NAME}' is not running"
+                    }
+                }
+            }
+        }
+        stage('Run-container') {
+            steps {
+                script {
+                    sh "docker run -d --name ${env.CONTAINER_NAME} -p 8004:8080 ${IMAGE_NAME}:${IMAGE_TAG}"
+                }
+            }
+        }
+    }
+}
