@@ -1,0 +1,43 @@
+pipeline {
+    agent any
+    environment {
+        AZURE_CREDENTIALS_ID = 'Azure-Cloud'
+    }
+    tools {
+        git 'Default'
+        maven 'mvn'
+    }
+    stages {
+        stage('Checkout-Scm') {
+            steps {
+                git branch: 'developer-2', credentialsId: 'Access-Nagarro-Gitlab', url: '
+https://git.nagarro.com/GITG00641/DotNet/deepak-kumar.git'
+            }
+        }
+        stage('Build-Maven') {
+            steps {
+                sh 'mvn clean package'
+            }
+        }
+        stage('Deploy to Azure') {
+            steps {
+                script {
+                    withCredentials([azureServicePrincipal(credentialsId: 'Azure')]) {
+                        sh 'az login --service-principal -u \$AZURE_CLIENT_ID -p \$AZURE_CLIENT_SECRET -t \$AZURE_TENANT_ID'
+                        sh 'az webapp deploy --resource-group deepakkumar25 --name nagarro --src-path target/basic-java-project-0.0.1-SNAPSHOT.war --type war'
+                        //sh 'az webapp deploy --resource-group deepakkumar25 --name nagarro --src-path target/*.war'
+                    }
+                }
+            }
+        }
+    }
+    post {
+        failure {
+            echo 'Deployment failed.'
+        }
+        success {
+            echo 'Deployment succeeded.'
+        }
+    }
+}
+
