@@ -1,0 +1,38 @@
+pipeline {
+    agent any
+ 
+    environment {
+        ARTIFACTORY_SERVER_ID = 'Artifactory-Auth'
+    }
+    tools {
+       maven 'mvn'
+    }
+    stages {
+        stage('Checkout-Scm') {
+            steps {
+                git branch: 'developer-2', credentialsId: 'Access-Nagarro-Gitlab', url: 'https://git.nagarro.com/GITG00641/DotNet/deepak-kumar.git'
+            }
+        }
+        stage('Build-Maven') {
+            steps {
+                sh 'mvn clean package'
+            }
+        }
+        stage('Artifactory') {
+            steps {
+                script {
+                    def uploadSpec = '''{
+                        "files": [
+                            {
+                                "pattern": "target/*.war",
+                                "target": "java-nagarro-assignment/binaryWar/"
+                            }
+                        ]
+                    }'''
+                    rtUpload serverId: "${ARTIFACTORY_SERVER_ID}", spec: uploadSpec
+                    rtPublishBuildInfo serverId: "${ARTIFACTORY_SERVER_ID}"
+                }
+            }
+        }
+    }
+}
