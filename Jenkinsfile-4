@@ -1,0 +1,33 @@
+pipeline {
+    agent any
+    environment {
+        AZURE_CREDENTIALS_ID ='Acr'
+        REGISTRY = 'dpcode.azurecr.io'
+        IMAGE_NAME = 'dpcode72/java-com'
+        IMAGE_TAG = "${env.BUILD_NUMBER}"
+    }
+    stages {
+        stage('Checkout-Scm') {
+            steps {
+                git branch: 'developer-2', credentialsId: 'Access-Nagarro-Gitlab', url: 'https://git.nagarro.com/GITG00641/DotNet/deepak-kumar.git'
+            }
+        }
+        stage('Build-Docker') {
+            steps {
+                withCredentials([usernamePassword(credentialsId: 'Artifactory', usernameVariable: 'ARTIFACTORY_USERNAME', passwordVariable: 'ARTIFACTORY_PASSWORD')]) {
+                    sh 'docker build --build-arg ARTIFACTORY_USERNAME=\$ARTIFACTORY_USERNAME --build-arg ARTIFACTORY_PASSWORD=\$ARTIFACTORY_PASSWORD -t ${REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG} .'
+                }
+            }
+        }
+        stage('Push-ACR') {
+            steps {
+                script {
+                    withCredentials([usernamePassword(credentialsId: AZURE_CREDENTIALS_ID, usernameVariable: 'REGISTRY_USER', passwordVariable: 'REGISTRY_PASS')]) {
+                        sh 'docker login -u $REGISTRY_USER -p $REGISTRY_PASS dpcode.azurecr.io'
+                        sh 'docker push ${REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}'
+                    }
+                }
+            }
+        }
+    }
+}
