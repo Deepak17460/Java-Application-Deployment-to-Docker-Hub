@@ -14,7 +14,7 @@ pipeline {
     stages {
         stage('Checkout-Scm') {
             steps {
-                git branch: 'develop', credentialsId: 'Access-Nagarro-Gitlab', url: 'https://git.nagarro.com/GITG00641/DotNet/deepak-kumar.git'
+                git branch: 'develop', credentialsId: 'Access-Nagarro-Gitlab', url: ''
             }
         }
         stage('Build-Maven') {
